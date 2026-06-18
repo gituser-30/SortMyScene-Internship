@@ -6,7 +6,16 @@
 
 ## How to Run
 
-### Backend
+### Full Stack (Production / Render Deploy)
+```bash
+# In the root directory
+npm install --prefix backend
+npm install --include=dev --prefix frontend
+npm run build --prefix frontend
+npm start --prefix backend
+```
+
+### Backend (Development)
 ```bash
 cd backend
 npm install
@@ -15,7 +24,7 @@ node utils/seedData.js # seed sample events
 npm run dev            # starts on port 5000
 ```
 
-### Frontend
+### Frontend (Development)
 ```bash
 cd frontend
 npm install
@@ -36,3 +45,5 @@ npm run dev            # starts on port 5173
 3. **Fallback Strategy (Non-Replica Set)** — uses `updateMany` (bulk) with a `modifiedCount` check. If fewer seats were updated than requested, all modified seats are immediately rolled back to "available".
 4. **TTL & Expiration Checks** — the `expiresAt` field combined with a manual check in `/api/bookings` ensures that expired reservations can never be confirmed, preventing race conditions around expiration.
 5. **Frontend State Syncing** — the frontend explicitly re-fetches seat state immediately after any reservation errors to ensure the UI represents the current ground truth.
+6. **Active State Recovery** — checks the DB on mount (`/api/reserve/active`) to silently recover user reservations if they accidentally refresh or navigate away, preventing temporary lockouts.
+7. **Cart Discarding** — implements a `/api/reserve/:id` DELETE endpoint so users can actively cancel and release their reserved seats to the public immediately without waiting for the 10min TTL.
