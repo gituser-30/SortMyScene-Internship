@@ -62,4 +62,18 @@ const reserveSeats = async (req, res) => {
   }
 };
 
-module.exports = { reserveSeats };
+const getActiveReservation = async (req, res) => {
+  const { eventId } = req.params;
+  try {
+    const reservation = await Reservation.findOne({ 
+      userId: req.user.id, 
+      eventId,
+      expiresAt: { $gt: new Date() }
+    });
+    return res.status(200).json(reservation);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { reserveSeats, getActiveReservation };

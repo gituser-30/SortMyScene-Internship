@@ -30,6 +30,21 @@ const EventDetailPage = () => {
       setSeats(response.data.seats);
       setSeatSummary(response.data.seatSummary);
       setError(null);
+      
+      try {
+        const resResponse = await api.get(`/reserve/active/${id}`);
+        if (resResponse.data) {
+          setReservation(resResponse.data);
+        } else {
+          setReservation(prev => {
+            // Only clear if the previous reservation is no longer active
+            return prev ? null : prev;
+          });
+        }
+      } catch (err) {
+        // Ignore auth or fetch errors for reservation status
+      }
+      
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load event details.');
     } finally {
