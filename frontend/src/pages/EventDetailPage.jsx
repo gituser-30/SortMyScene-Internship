@@ -58,7 +58,10 @@ const EventDetailPage = () => {
 
   const handleToggleSeat = (seatNumber) => {
     setActionError(null);
-    if (reservation) return; // Can't select new seats if already reserving
+    if (reservation) {
+      setActionError("You already have an active reservation. Please cancel it first if you want to select different seats.");
+      return; 
+    }
     
     setSelectedSeats(prev => {
       const newSet = new Set(prev);
@@ -120,6 +123,24 @@ const EventDetailPage = () => {
         setReservation(null);
         await fetchEventData();
       }
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleCancelReservation = async () => {
+    if (!reservation) return;
+    
+    setProcessing(true);
+    setActionError(null);
+    
+    try {
+      await api.delete(`/reserve/${reservation._id}`);
+      setReservation(null);
+      setSelectedSeats(new Set());
+      await fetchEventData();
+    } catch (err) {
+      setActionError(err.response?.data?.message || 'Failed to cancel reservation.');
     } finally {
       setProcessing(false);
     }
@@ -237,13 +258,22 @@ const EventDetailPage = () => {
                   <CountdownTimer expiresAt={reservation.expiresAt} onExpire={handleTimerExpire} />
                 </div>
 
-                <button 
-                  onClick={handleConfirmBooking}
-                  disabled={processing}
-                  className="w-full py-4 bg-success hover:bg-green-600 text-white rounded-xl font-bold text-lg shadow-[0_0_20px_rgba(34,197,94,0.3)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {processing ? 'Processing...' : 'Confirm Booking'}
-                </button>
+                <div className="space-y-3">
+                  <button 
+                    onClick={handleConfirmBooking}
+                    disabled={processing}
+                    className="w-full py-4 bg-success hover:bg-green-600 text-white rounded-xl font-bold text-lg shadow-[0_0_20px_rgba(34,197,94,0.3)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {processing ? 'Processing...' : 'Confirm Booking'}
+                  </button>
+                  <button 
+                    onClick={handleCancelReservation}
+                    disabled={processing}
+                    className="w-full py-3 bg-transparent border border-error/50 text-error hover:bg-error/10 rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Cancel Reservation
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="space-y-6">

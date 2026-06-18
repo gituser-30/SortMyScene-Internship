@@ -76,4 +76,47 @@ const getActiveReservation = async (req, res) => {
   }
 };
 
-module.exports = { reserveSeats, getActiveReservation };
+const cancelReservation = async (req, res) => {
+  const { id } = req.params;
+  const session = await mongoose.startSession();
+  try {
+    session.startTransaction();
+    const reservation = await Reservation.findOne({ _id: id, userId: req.user.id });
+    if (!reservation) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ message: 'Reservation not found' });
+    }
+    
+    await Seat.updateMany(
+      { eventId: reservation.eventId, seatNumber: { $in: reservation.seatNumbers }, status: 'reserved' },
+      { $set: { status: 'available' } },
+      { session }
+    );
+    await Reservation.deleteOne({ _id: id }, { session });
+    
+    await session.commitTransaction();
+    session.endSession();
+    return res.status(200).json({ message: 'Reservation cancelled' });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    
+    // Fallback for standalone mongo instances
+    try {
+      const reservation = await Reservation.findOne({ _id: id, userId: req.user.id });
+      if (reservation) {
+        await Seat.updateMany(
+          { eventId: reservation.eventId, seatNumber: { $in: reservation.seatNumbers }, status: 'reserved' },
+          { $set: { status: 'available' } }
+        );
+        await Reservation.deleteOne({ _id: id });
+      }
+      return res.status(200).json({ message: 'Reservation cancelled' });
+    } catch (fallbackError) {
+      return res.status(500).json({ message: fallbackError.message });
+    }
+  }
+};
+
+module.exports = { reserveSeats, getActiveReservation, cancelReservation };
